@@ -178,44 +178,31 @@ def test(clf_gini, test_df):
     pred = clf_gini.predict(test_df)
     return pred
 
-def accuracy(pred, key):
-    print ("Accuracy : ", 
-    accuracy_score(key['Survived'],pred)*100) 
-      
-    print("Report : ", 
-    classification_report(key['Survived'], pred)) 
-
-
 # Load in raw data
 train_df = pd.read_csv('input/train.csv')
 test_df = pd.read_csv('input/test.csv')
 
-# Determine features to use
+# Feature correlation results
 correlation(train_df)
 
-if(True):
-    # Preprocess raw data
-    proc_train_df, proc_test_df = preprocess(train_df, test_df)
+# Preprocess raw data
+proc_train_df, proc_test_df = preprocess(train_df, test_df)
 
-    # Train the data for a decision tree and random forest
-    clf_decision, clf_forest = train(proc_train_df)
+# Train the data for a decision tree and random forest
+clf_decision, clf_forest = train(proc_train_df)
 
-    # Plot the decision tree
-    fig = plt.figure(figsize=(25,20))
-    tree.plot_tree(clf_decision)
-    fig.savefig("decision_tree.png")
+# Plot the decision tree
+fig = plt.figure(figsize=(25,20))
+tree.plot_tree(clf_decision)
+fig.savefig("decision_tree.png")
 
-    # Preform 5-fold cross validation for decision tree and random forest
+# Preform 5-fold cross validation for decision tree and random forest
 
-    clf_decision, clf_forest = train(proc_train_df)
-    scores_tree = cross_val_score(clf_decision, proc_train_df[['Gender','FareBand','EmbarkedBand','Pclass','Age','SibSp']], proc_train_df['Survived'],cv=5, scoring='f1_micro')
-    scores_forest = cross_val_score(clf_forest, proc_train_df[['Gender','FareBand','EmbarkedBand','Pclass','Age','SibSp']], proc_train_df['Survived'],cv=5, scoring='f1_micro')
+clf_decision, clf_forest = train(proc_train_df)
+scores_tree = cross_val_score(clf_decision, proc_train_df[['Gender','FareBand','EmbarkedBand','Pclass','Age','SibSp']], proc_train_df['Survived'],cv=5, scoring='f1_micro')
+scores_forest = cross_val_score(clf_forest, proc_train_df[['Gender','FareBand','EmbarkedBand','Pclass','Age','SibSp']], proc_train_df['Survived'],cv=5, scoring='f1_micro')
 
-    # Print the scores
-    print('Decision Tree:', scores_tree.mean())
-    print('Random Forest:', scores_forest.mean())
-    print()
-
-    # Test the classifiers
-    #pred_tree = test(clf_decision, proc_test_df)
-    #pred_forest = test(clf_forest, proc_test_df)
+# Print the scores
+print('Decision Tree:', scores_tree.mean())
+print('Random Forest:', scores_forest.mean())
+print()
