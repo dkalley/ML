@@ -3,6 +3,10 @@ import random
 import time
 import matplotlib.pyplot as plt
 import pandas as pd
+
+############################################################
+#   Distance Methods
+############################################################
 def euclidean(point,centroid):
     p = [point[i] for i in range(len(point)-1)]
     return math.dist(p,centroid)
@@ -40,38 +44,9 @@ def jaccard_coefficient(point,centroid):
 def jaccard(point,centroid):
     return (1 - jaccard_coefficient(point,centroid))
 
-def centroid_change(centroids,new_centroids, epsilon):
-    centroid_1 = math.dist(centroids[0], new_centroids[0])
-    centroid_2 = math.dist(centroids[1], new_centroids[1])
-
-    if centroid_1 < epsilon and centroid_2 < epsilon:
-        return False
-
-    return True
-
-def cluster_info(cluster, i):
-    if len(cluster) == 0:
-        return 'Empty', 0, 0, 0
-
-    # Create a dictionary of counts
-    counts = {}
-
-    # Count labels
-    for point in cluster:
-        if point[-1] not in counts:
-            counts[point[-1]] = 1
-        else:
-            counts[point[-1]] = counts[point[-1]] + 1
-
-    name = max(counts, key=counts.get)
-    correct = counts[name]
-    incorrect = len(cluster) - correct
-    accuracy = correct / (incorrect + correct)
-
-    return name, accuracy, correct, incorrect
-        
-
-
+############################################################
+#   Printing Methods
+############################################################
 def initial_plot(plt,centroids,points, pointLabels):    
     labels = []
     # Plot points and labels
@@ -127,6 +102,42 @@ def plot_clusters(plt, centroids, clusters, clusternames, pointLabels):
 
     plt.show()
 
+############################################################
+#   Stopping Criteria Methods
+############################################################
+def centroid_based(centroids,new_centroids,iteration,max_iter,sse):
+    return (centroids != new_centroids)
+
+def iteration_based(centroids,new_centroids,iteration,max_iter,sse):
+    return iteration < max_iter
+
+def sse_based(centroids,new_centroids,iteration,max_iter,sse):
+    return (sse[1] < sse[0]) and (iteration < max_iter)
+
+############################################################
+#   Helper Methods
+############################################################
+def cluster_info(cluster, i):
+    if len(cluster) == 0:
+        return 'Empty', 0, 0, 0
+
+    # Create a dictionary of counts
+    counts = {}
+
+    # Count labels
+    for point in cluster:
+        if point[-1] not in counts:
+            counts[point[-1]] = 1
+        else:
+            counts[point[-1]] = counts[point[-1]] + 1
+
+    name = max(counts, key=counts.get)
+    correct = counts[name]
+    incorrect = len(cluster) - correct
+    accuracy = correct / (incorrect + correct)
+
+    return name, accuracy, correct, incorrect
+        
 def assign(dataset, centroids, clusters, f):
     # For each point in the dataset
     for point in dataset:
@@ -171,16 +182,19 @@ def calculate_sse(centroids,clusters):
 
     return sse_value
 
-def centroid_based(centroids,new_centroids,iteration,max_iter,sse):
-    return (centroids != new_centroids)
-
-def iteration_based(centroids,new_centroids,iteration,max_iter,sse):
-    return iteration < max_iter
-
-def sse_based(centroids,new_centroids,iteration,max_iter,sse):
-    return (sse[1] < sse[0]) and (iteration < max_iter)
-
-# Defaults to euclidean distance
+############################################################
+#   kmeans Methods
+############################################################
+# Default Arguments
+#   distance: Euclidean
+#   initCentroids: None
+#   printIterations: None
+#   Stopping Criteria: Centroid Based
+#   Max Iterations: 100
+#   Plot: True
+#   Name Clusters: False
+#   Print Point Labels: True
+#   Time execution: False (Should not be used if printing iterations)
 def kmeans(dataset,numClusters,distanceFunction=euclidean,initCentroids=None,printIteration=[],stoppingCriteria=centroid_based,max_iter=100,plot=True,clusterName=False,pointLabels=True,timer=False):
     # Either initialize centroids with a random sample or used pased centroids
     if initCentroids == None or len(initCentroids) < numClusters:
@@ -206,6 +220,7 @@ def kmeans(dataset,numClusters,distanceFunction=euclidean,initCentroids=None,pri
     print('\tDistance Function: ', distanceFunction.__name__)
     print('\tInitial Centroids:', centroids)
 
+    # Set defualt values and start timer
     new_centroids = [[-1,-1],[-1,-1]]
     clusters = [[] for i in range(numClusters)]
     sse = [float('inf'),float('inf') ]
@@ -228,20 +243,28 @@ def kmeans(dataset,numClusters,distanceFunction=euclidean,initCentroids=None,pri
         new_centroids = []
         new_centroids = recalculate_cluster(clusters,len(dataset[0])-1)
 
+        # Calcualte the current SSE value
         sse[1] = calculate_sse(new_centroids,clusters)
 
+        # Print the iteration if asked
         if iteration in printIteration:
                 # Print iteration 1 values
                 print('Iteration ' + str(iteration) + ':')
                 print('Current SSE:', sse[1])
                 print(new_centroids)
+                clusternames = []
+                if clusterName:
+                    # Determine name by majority vote and accuracy
+                    name, accuracy, correct, incorrect  = cluster_info(cluster, i)
+                    clusternames.append(name)
                 if plot:
-                    plot_clusters(plt, new_centroids, clusters, pointLabels)
+                    plot_clusters(plt, new_centroids, clusters, clusternames, pointLabels)
         
         # Special case for the first iteration, ensure that the first sse is smaller than the compared sse
         if iteration == 1:
             sse[0] = sse[1] + 1
 
+        # Determine if stopping criteria has been reached
         run = stoppingCriteria(centroids,new_centroids,iteration,max_iter,sse)
         
         # Set current centroid to new centroid
@@ -249,6 +272,7 @@ def kmeans(dataset,numClusters,distanceFunction=euclidean,initCentroids=None,pri
         # Set current SSE to new SSE
         sse[0] = sse[1]
 
+    # End time before printing results
     if timer:
         end_time = time.time()
         print('\nExecution time: ', end_time - start_time)
@@ -281,8 +305,11 @@ def kmeans(dataset,numClusters,distanceFunction=euclidean,initCentroids=None,pri
         f.write('\n')    
     f.close()
     if plot:
-        plot_clusters(plt, centroids, clusters, clusternames,pointLabels)
+        plot_clusters(plt, centroids, clusters, clusternames, pointLabels)
 
+############################################################
+#   Tasks
+############################################################
 def task_1():
     initial_centroids = [[[4,6],[5,4]],[[4,6],[5,4]],[[3,3],[8,3]],[[3,2],[4,8]]]
     points = [(3,5,'X1'),(3,4,'X2'),(2,8,'X3'),(2,3,'X4'),(6,2,'X5'),(6,4,'X6'),(7,3,'X7'),(7,4,'X8'),(8,5,'X9'),(7,6,'X10')]
@@ -295,12 +322,6 @@ def task_1():
             kmeans(points,2,euclidean,initCentroids=initial_centroids[i],printIteration=[1])
         else:
             kmeans(points,2,manhattan,initCentroids=initial_centroids[i],printIteration=[1])
-
-def test():
-    initial_centroids = [[[4,6],[5,4]]]
-    points = [(3,5,'X1'),(3,4,'X2'),(2,8,'X3'),(2,3,'X4'),(6,2,'X5'),(6,4,'X6'),(7,3,'X7'),(7,4,'X8'),(8,5,'X9'),(7,6,'X10')]
-
-    kmeans(points,2,cosine,initCentroids=initial_centroids[0],printIteration=[1])
 
 def task_2():
     data = pd.read_csv('iris.data')
@@ -315,7 +336,6 @@ def task_2():
             line.append(points[i][j])
         data.append(line)
     centroids = random.sample(data, 3)
-
 
     print('=======================================')
     print('Question 1 & 2 & 3')
@@ -344,5 +364,8 @@ def task_2():
         kmeans(points,3,cosine,stoppingCriteria=mode,max_iter=100,plot=False,initCentroids=centroids,timer=True)
         kmeans(points,3,jaccard,stoppingCriteria=mode,max_iter=100,plot=False,initCentroids=centroids,timer=True)
 
-#task_1()  
+############################################################
+#   Main
+############################################################
+task_1()  
 task_2()
